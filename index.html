@@ -7,14 +7,14 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: #7494C0;
       height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* ヘッダー＆設定エリア */
+    /* ヘッダー */
     header {
       background-color: #273246;
       color: #ffffff;
@@ -33,7 +33,7 @@
       justify-content: space-between;
     }
 
-    header input, header select {
+    header input, header select, header button {
       padding: 6px 10px;
       border-radius: 6px;
       border: none;
@@ -43,6 +43,13 @@
 
     header input[type="password"] { flex: 1; }
 
+    .reset-btn {
+      background-color: #e74c3c;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
     /* チャット表示エリア */
     #chat-container {
       flex: 1;
@@ -50,36 +57,134 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .message {
-      max-width: 80%;
+    /* メッセージグループ（送信者＋吹き出し＋時刻） */
+    .message-group {
+      display: flex;
+      gap: 8px;
+      max-width: 85%;
+    }
+
+    .message-group.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message-group.ai {
+      align-self: flex-start;
+    }
+
+    /* アイコン */
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .message-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sender-name {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-left: 2px;
+    }
+
+    .bubble-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .user .bubble-wrapper {
+      flex-direction: row-reverse;
+    }
+
+    /* 吹き出しスタイル */
+    .bubble {
       padding: 10px 14px;
       border-radius: 16px;
       font-size: 14px;
       line-height: 1.5;
       word-wrap: break-word;
       white-space: pre-wrap;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
-    .user {
-      align-self: flex-end;
+    .user .bubble {
       background-color: #85E249;
       color: #000;
       border-bottom-right-radius: 2px;
     }
 
-    .ai {
-      align-self: flex-start;
-      background-color: #fff;
+    .ai .bubble {
+      background-color: #ffffff;
       color: #000;
       border-bottom-left-radius: 2px;
     }
 
+    /* 送信時刻・既読表示 */
+    .time-status {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.8);
+      white-space: nowrap;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.2;
+    }
+
+    .user .time-status {
+      align-items: flex-end;
+    }
+
+    .read-mark {
+      font-size: 9px;
+      color: #e2fcd4;
+    }
+
+    /* クイック応答（スタンプ風）バー */
+    .quick-bar {
+      background-color: #8faacb;
+      padding: 6px 10px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .quick-btn {
+      background-color: rgba(255, 255, 255, 0.9);
+      border: none;
+      border-radius: 12px;
+      padding: 5px 12px;
+      font-size: 12px;
+      color: #273246;
+      cursor: pointer;
+      font-weight: 500;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      transition: background-color 0.2s;
+    }
+
+    .quick-btn:hover {
+      background-color: #ffffff;
+    }
+
     /* 下部固定入力エリア */
     footer {
-      background-color: #fff;
+      background-color: #ffffff;
       padding: 10px;
       display: flex;
       gap: 8px;
@@ -106,8 +211,11 @@
       border-radius: 50%;
       width: 40px;
       height: 40px;
-      font-weight: bold;
+      font-size: 16px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     footer button:disabled { background-color: #ccc; }
@@ -118,48 +226,66 @@
   <header>
     <div class="config-row">
       <strong>自己対話メモ</strong>
-      <!-- ペルソナ（性格）切り替え -->
       <select id="persona-select">
         <option value="coach">傾聴コーチ（優しく深掘り）</option>
         <option value="devil">悪魔の代弁者（盲点を突く）</option>
         <option value="socrates">ソクラテス（質問のみ）</option>
       </select>
+      <button class="reset-btn" id="reset-btn" title="会話履歴をリセット">リセット</button>
     </div>
     <div class="config-row">
-      <!-- Gemini APIキー入力（ローカルストレージ保存） -->
       <input type="password" id="api-key-input" placeholder="Gemini APIキーを入力">
     </div>
   </header>
 
   <div id="chat-container"></div>
 
+  <!-- クイック応答（スタンプ風）バー -->
+  <div class="quick-bar">
+    <button class="quick-btn" onclick="sendQuickText('まとめる')">📝 まとめて</button>
+    <button class="quick-btn" onclick="sendQuickText('別の視点は？')">💡 別の視点は？</button>
+    <button class="quick-btn" onclick="sendQuickText('具体例を教えて')">🔍 具体例は？</button>
+    <button class="quick-btn" onclick="sendQuickText('励まして！')">✨ 励まして</button>
+    <button class="quick-btn" onclick="sendQuickText('次に何をすべき？')">🚀 次のアクションは？</button>
+  </div>
+
   <footer>
     <textarea id="message-input" placeholder="思考を吐き出す..." rows="1"></textarea>
     <button id="send-btn">➤</button>
   </footer>
-　<script>
+
+  <script>
     // ★GASのURL設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
 
-    // ペルソナのシステム指示文（プロンプト）
-    const PERSONA_PROMPTS = {
-      coach: `あなたはユーザーの「思考整理パートナー（共感型コーチ）」です。
+    const PERSONA_CONFIG = {
+      coach: {
+        name: "傾聴コーチ",
+        icon: "🌱",
+        prompt: `あなたはユーザーの「思考整理パートナー（共感型コーチ）」です。
 ルール：
 ・LINEのように短文（100〜150文字程度）で返答すること。
 ・説教や長文のアドバイスは絶対禁止。
-・ユーザーの気持ちを肯定的に受け止めた上で、思考を深める「問いかけ」を1つだけ投げかけること。`,
-
-      devil: `あなたは「悪魔の代弁者（クリティカルシンカー）」です。
+・ユーザーの気持ちを肯定的に受け止めた上で、思考を深める「問いかけ」を1つだけ投げかけること。`
+      },
+      devil: {
+        name: "悪魔の代弁者",
+        icon: "😈",
+        prompt: `あなたは「悪魔の代弁者（クリティカルシンカー）」です。
 ルール：
 ・LINEのように短文（100〜150文字程度）で返答すること。
 ・ユーザーのアイデアや意見の「盲点」や「リスク」を優しく指摘すること。
-・否定するのではなく「もし〜という事態が起きたらどう対応する？」といった視点を提供すること。`,
-
-      socrates: `あなたは「ソクラテス（質問者）」です。
+・否定するのではなく「もし〜という事態が起きたらどう対応する？」といった視点を提供すること。`
+      },
+      socrates: {
+        name: "ソクラテス",
+        icon: "🏛️",
+        prompt: `あなたは「ソクラテス（質問者）」です。
 ルール：
 ・メッセージは完全な質問形式のみで返すこと（100文字以内）。
 ・自分の意見やアドバイスは一切言わない。
 ・「なぜそう思うのか？」「それによって本当はどうなりたいのか？」と質疑応答だけで思考を導くこと。`
+      }
     };
 
     const chatContainer = document.getElementById("chat-container");
@@ -167,25 +293,79 @@
     const sendBtn = document.getElementById("send-btn");
     const apiKeyInput = document.getElementById("api-key-input");
     const personaSelect = document.getElementById("persona-select");
+    const resetBtn = document.getElementById("reset-btn");
 
-    // 会話履歴の保持
     let conversationHistory = [];
 
-    // ★修正ポイント1：入力した瞬間に即時保存（inputイベントに変更）
+    // APIキーのローカル保存
     apiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
     apiKeyInput.addEventListener("input", () => {
       localStorage.setItem("gemini_api_key", apiKeyInput.value.trim());
     });
 
-    function appendMessage(sender, text) {
-      const msgDiv = document.createElement("div");
-      msgDiv.classList.add("message", sender === "ユーザー" ? "user" : "ai");
-      msgDiv.innerText = text;
-      chatContainer.appendChild(msgDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-      return msgDiv;
+    // 現在時刻のフォーマット (例: 14:05)
+    function getCurrentTime() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${hours}:${minutes}`;
     }
 
+    // メッセージの画面描画
+    function appendMessage(sender, text) {
+      const selectedPersona = personaSelect.value;
+      const persona = PERSONA_CONFIG[selectedPersona];
+      const timeStr = getCurrentTime();
+
+      const groupDiv = document.createElement("div");
+      groupDiv.classList.add("message-group", sender === "ユーザー" ? "user" : "ai");
+
+      // AIの場合はアイコンを表示
+      if (sender !== "ユーザー") {
+        const avatarDiv = document.createElement("div");
+        avatarDiv.classList.add("avatar");
+        avatarDiv.innerText = persona.icon;
+        groupDiv.appendChild(avatarDiv);
+      }
+
+      const contentDiv = document.createElement("div");
+      contentDiv.classList.add("message-content");
+
+      // 送信者名（AIのみ）
+      if (sender !== "ユーザー") {
+        const nameDiv = document.createElement("div");
+        nameDiv.classList.add("sender-name");
+        nameDiv.innerText = persona.name;
+        contentDiv.appendChild(nameDiv);
+      }
+
+      const wrapperDiv = document.createElement("div");
+      wrapperDiv.classList.add("bubble-wrapper");
+
+      // 吹き出し
+      const bubbleDiv = document.createElement("div");
+      bubbleDiv.classList.add("bubble");
+      bubbleDiv.innerText = text;
+
+      // 時刻・既読
+      const timeDiv = document.createElement("div");
+      timeDiv.classList.add("time-status");
+      if (sender === "ユーザー") {
+        timeDiv.innerHTML = `<span class="read-mark">既読</span><span>${timeStr}</span>`;
+      } else {
+        timeDiv.innerHTML = `<span>${timeStr}</span>`;
+      }
+
+      wrapperDiv.appendChild(bubbleDiv);
+      wrapperDiv.appendChild(timeDiv);
+      contentDiv.appendChild(wrapperDiv);
+      groupDiv.appendChild(contentDiv);
+
+      chatContainer.appendChild(groupDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // Google ドキュメント保存処理
     async function saveToGoogleDoc(sender, text) {
       if (!GAS_URL || GAS_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) return;
       try {
@@ -200,9 +380,8 @@
       }
     }
 
-    // Gemini API 呼び出し関数
+    // Gemini API 呼び出し
     async function fetchGeminiResponse(userText) {
-      // 入力欄から直接最新の値を取得
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
         alert("Gemini APIキーを入力してください。");
@@ -210,17 +389,14 @@
       }
 
       const selectedPersona = personaSelect.value;
-      const systemInstruction = PERSONA_PROMPTS[selectedPersona];
+      const systemInstruction = PERSONA_CONFIG[selectedPersona].prompt;
 
-      // 会話履歴の更新
       conversationHistory.push({ role: "user", parts: [{ text: userText }] });
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent?key=${apiKey}`;
 
       const requestBody = {
-        system_instruction: {
-          parts: [{ text: systemInstruction }]
-        },
+        system_instruction: { parts: [{ text: systemInstruction }] },
         contents: conversationHistory
       };
 
@@ -232,18 +408,14 @@
         });
 
         const data = await response.json();
-        
+
         if (data.error) {
-          console.error("Gemini API Error Detail:", data.error);
-          // ★修正ポイント2：何のエラーか分かりやすいように詳細を表示
-          return `（エラー: ${data.error.message || "APIキーを確認してください"}）`;
+          console.error("Gemini API Error:", data.error);
+          return `（エラー: ${data.error.message || "リクエストエラー"}）`;
         }
 
         const aiText = data.candidates[0].content.parts[0].text;
-        
-        // AIの返答を履歴に追加
         conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
-        
         return aiText;
       } catch (err) {
         console.error("通信エラー:", err);
@@ -251,18 +423,16 @@
       }
     }
 
-    async function handleSend() {
-      const text = messageInput.value.trim();
+    async function handleSend(textToSend) {
+      const text = textToSend || messageInput.value.trim();
       if (!text) return;
 
       sendBtn.disabled = true;
 
-      // ユーザー発言の描画 & Google Doc保存
       appendMessage("ユーザー", text);
-      messageInput.value = "";
+      if (!textToSend) messageInput.value = "";
       saveToGoogleDoc("ユーザー", text);
 
-      // Gemini APIの呼び出し
       const aiResponse = await fetchGeminiResponse(text);
 
       if (aiResponse) {
@@ -273,7 +443,20 @@
       sendBtn.disabled = false;
     }
 
-    sendBtn.addEventListener("click", handleSend);
+    // クイック応答（スタンプ）用関数
+    function sendQuickText(text) {
+      handleSend(text);
+    }
+
+    // 会話リセットボタン
+    resetBtn.addEventListener("click", () => {
+      if (confirm("会話の文脈履歴をリセットしますか？（画面上の表示は残ります）")) {
+        conversationHistory = [];
+        appendMessage("AI", "🔄 会話の文脈をリセットしました。新しい話題をどうぞ！");
+      }
+    });
+
+    sendBtn.addEventListener("click", () => handleSend());
 
     messageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -282,6 +465,5 @@
       }
     });
   </script>
- 
 </body>
 </html>

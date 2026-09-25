@@ -393,7 +393,7 @@
 
       conversationHistory.push({ role: "user", parts: [{ text: userText }] });
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
 
       const requestBody = {
         system_instruction: { parts: [{ text: systemInstruction }] },

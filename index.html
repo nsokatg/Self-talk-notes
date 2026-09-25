@@ -255,6 +255,7 @@
   </footer>
 
   <script>
+    // ★GASのURL設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
 
     const PERSONA_CONFIG = {
@@ -373,11 +374,10 @@
       }
     }
 
-    // 指定ミリ秒待機するヘルパー関数
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // ★自動リトライ機能付き Gemini API 呼び出し
-    async function fetchGeminiResponse(userText) {
+    // ★強化版：自動リトライ機能付き Gemini API 呼び出し
+    async function fetchGeminiResponse(userText, statusBubble) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
         alert("Gemini APIキーを入力してください。");
@@ -395,8 +395,8 @@
         contents: currentHistory
       };
 
-      const maxRetries = 3;
-      let delay = 1000; // 初期待機時間 1秒
+      const maxRetries = 5; // リトライ回数を5回に増加
+      let delay = 2000;      // 初期待機時間を2秒に設定 (2s ➔ 4s ➔ 8s ➔ 16s)
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -413,9 +413,12 @@
             
             // 混雑エラーかつリトライ回数が残っている場合
             if (isHighDemand && attempt < maxRetries) {
+              if (statusBubble) {
+                statusBubble.innerText = `⏳ 回線混雑のため自動再接続中... (${attempt}/${maxRetries}回目)`;
+              }
               console.warn(`混雑エラー検知。${delay / 1000}秒後にリトライします (${attempt}/${maxRetries})...`);
               await sleep(delay);
-              delay *= 2; // 待機時間を倍増 (1秒 ➔ 2秒 ➔ 4秒)
+              delay *= 2; 
               continue;
             }
 
@@ -425,14 +428,16 @@
 
           const aiText = data.candidates[0].content.parts[0].text;
           
-          // 成功したら履歴を更新
+          // 成功したら文脈履歴を更新
           conversationHistory.push({ role: "user", parts: [{ text: userText }] });
           conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
           
           return aiText;
         } catch (err) {
           if (attempt < maxRetries) {
-            console.warn(`通信エラー。${delay / 1000}秒後にリトライします (${attempt}/${maxRetries})...`);
+            if (statusBubble) {
+              statusBubble.innerText = `⏳ 通信再試行中... (${attempt}/${maxRetries}回目)`;
+            }
             await sleep(delay);
             delay *= 2;
             continue;
@@ -449,15 +454,22 @@
 
       sendBtn.disabled = true;
 
+      // ユーザー発言を表示＆Googleドキュメントへ保存
       appendMessage("ユーザー", text);
       if (!textToSend) messageInput.value = "";
       saveToGoogleDoc("ユーザー", text);
 
-      const aiResponse = await fetchGeminiResponse(text);
+      // 一時的な「応答待ち/再試行中」バブルを表示
+      const statusBubble = appendMessage("AI", "💭 考え中...");
+
+      // API呼び出し（リトライ処理付き）
+      const aiResponse = await fetchGeminiResponse(text, statusBubble);
 
       if (aiResponse) {
-        appendMessage("AI", aiResponse);
+        statusBubble.innerText = aiResponse; // 返答で吹き出しの中身を更新
         saveToGoogleDoc("AI", aiResponse);
+      } else {
+        statusBubble.innerText = "（エラーが発生しました）";
       }
 
       sendBtn.disabled = false;

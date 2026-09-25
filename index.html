@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自己対話メモ</title>
+  <style>
+    /* 全体・LINE風テーマ設定 */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #7494C0; /* LINEトーク画面風の背景色 */
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ヘッダー */
+    header {
+      background-color: #273246;
+      color: #ffffff;
+      padding: 12px 16px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    /* チャット表示エリア */
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 共通吹き出しスタイル */
+    .message {
+      max-width: 75%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    /* ユーザーのメッセージ（右寄せ・緑） */
+    .user {
+      align-self: flex-end;
+      background-color: #85E249;
+      color: #000000;
+      border-bottom-right-radius: 2px;
+    }
+
+    /* AIのメッセージ（左寄せ・白） */
+    .ai {
+      align-self: flex-start;
+      background-color: #ffffff;
+      color: #000000;
+      border-bottom-left-radius: 2px;
+    }
+
+    /* 送信状態ステータス */
+    .status-tag {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+      align-self: flex-end;
+      margin-top: -8px;
+      margin-right: 4px;
+    }
+
+    /* 下部固定入力エリア */
+    footer {
+      background-color: #ffffff;
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid #ddd;
+    }
+
+    footer textarea {
+      flex: 1;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      padding: 10px 14px;
+      font-size: 14px;
+      resize: none;
+      height: 40px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    footer button {
+      background-color: #00B900;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    footer button:disabled {
+      background-color: #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <header>自己対話メモ (AIパートナー)</header>
+
+  <div id="chat-container">
+    <!-- メッセージがここに動的に追加されます -->
+  </div>
+
+  <footer>
+    <textarea id="message-input" placeholder="メッセージを入力..." rows="1"></textarea>
+    <button id="send-btn">➤</button>
+  </footer>
+
+  <script>
+    // ★先ほどコピーしたGASのウェブアプリURLに置き換えてください
+    const GAS_URL = "YOUR_GAS_WEB_APP_URL_HERE";
+
+    const chatContainer = document.getElementById("chat-container");
+    const messageInput = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    // メッセージ画面追加
+    function appendMessage(sender, text) {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("message", sender === "ユーザー" ? "user" : "ai");
+      msgDiv.innerText = text;
+      chatContainer.appendChild(msgDiv);
+      
+      // 自動スクロール
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      return msgDiv;
+    }
+
+    // Google ドキュメント(GAS)への送信処理
+    async function saveToGoogleDoc(sender, text) {
+      if (GAS_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) return;
+      
+      try {
+        await fetch(GAS_URL, {
+          method: "POST",
+          mode: "no-cors", // GASクロスドメイン通信用
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sender: sender, message: text })
+        });
+      } catch (err) {
+        console.error("GAS送信エラー:", err);
+      }
+    }
+
+    // 送信ボタン押下時
+    async function handleSend() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+
+      // 1. ユーザーの書き込みを画面表示 & GAS保存
+      appendMessage("ユーザー", text);
+      messageInput.value = "";
+      saveToGoogleDoc("ユーザー", text);
+
+      // 2. モックAI応答（※後で本物のAI APIに差し替えます）
+      setTimeout(async () => {
+        const aiResponse = "「" + text + "」についてもう少し詳しく聞かせてください！";
+        appendMessage("AI", aiResponse);
+        saveToGoogleDoc("AI", aiResponse);
+      }, 1000);
+    }
+
+    sendBtn.addEventListener("click", handleSend);
+
+    // Shift+Enterで改行、Enterのみで送信
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+  </script>
+</body>
+</html>

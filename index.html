@@ -5,26 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>自己対話メモ</title>
   <style>
-    /* 全体・LINE風テーマ設定 */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #7494C0; /* LINEトーク画面風の背景色 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #7494C0;
       height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* ヘッダー */
+    /* ヘッダー＆設定エリア */
     header {
       background-color: #273246;
       color: #ffffff;
-      padding: 12px 16px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 16px;
+      padding: 10px 16px;
+      font-size: 14px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
+
+    .config-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header input, header select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      outline: none;
+    }
+
+    header input[type="password"] { flex: 1; }
 
     /* チャット表示エリア */
     #chat-container {
@@ -36,45 +53,33 @@
       gap: 12px;
     }
 
-    /* 共通吹き出しスタイル */
     .message {
-      max-width: 75%;
+      max-width: 80%;
       padding: 10px 14px;
       border-radius: 16px;
       font-size: 14px;
       line-height: 1.5;
       word-wrap: break-word;
-      position: relative;
+      white-space: pre-wrap;
     }
 
-    /* ユーザーのメッセージ（右寄せ・緑） */
     .user {
       align-self: flex-end;
       background-color: #85E249;
-      color: #000000;
+      color: #000;
       border-bottom-right-radius: 2px;
     }
 
-    /* AIのメッセージ（左寄せ・白） */
     .ai {
       align-self: flex-start;
-      background-color: #ffffff;
-      color: #000000;
+      background-color: #fff;
+      color: #000;
       border-bottom-left-radius: 2px;
-    }
-
-    /* 送信状態ステータス */
-    .status-tag {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.7);
-      align-self: flex-end;
-      margin-top: -8px;
-      margin-right: 4px;
     }
 
     /* 下部固定入力エリア */
     footer {
-      background-color: #ffffff;
+      background-color: #fff;
       padding: 10px;
       display: flex;
       gap: 8px;
@@ -103,57 +108,91 @@
       height: 40px;
       font-weight: bold;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
-    footer button:disabled {
-      background-color: #ccc;
-    }
+    footer button:disabled { background-color: #ccc; }
   </style>
 </head>
 <body>
 
-  <header>自己対話メモ (AIパートナー)</header>
+  <header>
+    <div class="config-row">
+      <strong>自己対話メモ</strong>
+      <!-- ペルソナ（性格）切り替え -->
+      <select id="persona-select">
+        <option value="coach">傾聴コーチ（優しく深掘り）</option>
+        <option value="devil">悪魔の代弁者（盲点を突く）</option>
+        <option value="socrates">ソクラテス（質問のみ）</option>
+      </select>
+    </div>
+    <div class="config-row">
+      <!-- Gemini APIキー入力（ローカルストレージ保存） -->
+      <input type="password" id="api-key-input" placeholder="Gemini APIキーを入力">
+    </div>
+  </header>
 
-  <div id="chat-container">
-    <!-- メッセージがここに動的に追加されます -->
-  </div>
+  <div id="chat-container"></div>
 
   <footer>
-    <textarea id="message-input" placeholder="メッセージを入力..." rows="1"></textarea>
+    <textarea id="message-input" placeholder="思考を吐き出す..." rows="1"></textarea>
     <button id="send-btn">➤</button>
   </footer>
 
   <script>
-    // ★先ほどコピーしたGASのウェブアプリURLに置き換えてください
+    // ★先ほどのGASウェブアプリURLを設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
+
+    // ペルソナのシステム指示文（プロンプト）
+    const PERSONA_PROMPTS = {
+      coach: `あなたはユーザーの「思考整理パートナー（共感型コーチ）」です。
+ルール：
+・LINEのように短文（100〜150文字程度）で返答すること。
+・説教や長文のアドバイスは絶対禁止。
+・ユーザーの気持ちを肯定的に受け止めた上で、思考を深める「問いかけ」を1つだけ投げかけること。`,
+
+      devil: `あなたは「悪魔の代弁者（クリティカルシンカー）」です。
+ルール：
+・LINEのように短文（100〜150文字程度）で返答すること。
+・ユーザーのアイデアや意見の「盲点」や「リスク」を優しく指摘すること。
+・否定するのではなく「もし〜という事態が起きたらどう対応する？」といった視点を提供すること。`,
+
+      socrates: `あなたは「ソクラテス（質問者）」です。
+ルール：
+・メッセージは完全な質問形式のみで返すこと（100文字以内）。
+・自分の意見やアドバイスは一切言わない。
+・「なぜそう思うのか？」「それによって本当はどうなりたいのか？」と質疑応答だけで思考を導くこと。`
+    };
 
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendBtn = document.getElementById("send-btn");
+    const apiKeyInput = document.getElementById("api-key-input");
+    const personaSelect = document.getElementById("persona-select");
 
-    // メッセージ画面追加
+    // 会話履歴の保持（文脈理解用）
+    let conversationHistory = [];
+
+    // APIキーのローカル保存・復元
+    apiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
+    apiKeyInput.addEventListener("change", () => {
+      localStorage.setItem("gemini_api_key", apiKeyInput.value.trim());
+    });
+
     function appendMessage(sender, text) {
       const msgDiv = document.createElement("div");
       msgDiv.classList.add("message", sender === "ユーザー" ? "user" : "ai");
       msgDiv.innerText = text;
       chatContainer.appendChild(msgDiv);
-      
-      // 自動スクロール
       chatContainer.scrollTop = chatContainer.scrollHeight;
       return msgDiv;
     }
 
-    // Google ドキュメント(GAS)への送信処理
     async function saveToGoogleDoc(sender, text) {
       if (GAS_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) return;
-      
       try {
         await fetch(GAS_URL, {
           method: "POST",
-          mode: "no-cors", // GASクロスドメイン通信用
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sender: sender, message: text })
         });
@@ -162,27 +201,79 @@
       }
     }
 
-    // 送信ボタン押下時
+    // Gemini API 呼び出し関数
+    async function fetchGeminiResponse(userText) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        alert("Gemini APIキーを入力してください。");
+        return null;
+      }
+
+      const selectedPersona = personaSelect.value;
+      const systemInstruction = PERSONA_PROMPTS[selectedPersona];
+
+      // 対話履歴の作成
+      conversationHistory.push({ role: "user", parts: [{ text: userText }] });
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+      const requestBody = {
+        system_instruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        contents: conversationHistory
+      };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error("API Error:", data.error);
+          return "（エラー: APIキーまたはリクエストを確認してください）";
+        }
+
+        const aiText = data.candidates[0].content.parts[0].text;
+        
+        // AIの返答を会話履歴に追加
+        conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
+        
+        return aiText;
+      } catch (err) {
+        console.error("通信エラー:", err);
+        return "（エラーが発生しました）";
+      }
+    }
+
     async function handleSend() {
       const text = messageInput.value.trim();
       if (!text) return;
 
-      // 1. ユーザーの書き込みを画面表示 & GAS保存
+      sendBtn.disabled = true;
+
+      // ユーザー発言の描画 & Google Doc保存
       appendMessage("ユーザー", text);
       messageInput.value = "";
       saveToGoogleDoc("ユーザー", text);
 
-      // 2. モックAI応答（※後で本物のAI APIに差し替えます）
-      setTimeout(async () => {
-        const aiResponse = "「" + text + "」についてもう少し詳しく聞かせてください！";
+      // Gemini APIの呼び出し
+      const aiResponse = await fetchGeminiResponse(text);
+
+      if (aiResponse) {
         appendMessage("AI", aiResponse);
         saveToGoogleDoc("AI", aiResponse);
-      }, 1000);
+      }
+
+      sendBtn.disabled = false;
     }
 
     sendBtn.addEventListener("click", handleSend);
 
-    // Shift+Enterで改行、Enterのみで送信
     messageInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();

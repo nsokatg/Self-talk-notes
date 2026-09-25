@@ -137,9 +137,8 @@
     <textarea id="message-input" placeholder="思考を吐き出す..." rows="1"></textarea>
     <button id="send-btn">➤</button>
   </footer>
-
-  <script>
-    // ★先ほどのGASウェブアプリURLを設定
+　<script>
+    // ★GASのURL設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
 
     // ペルソナのシステム指示文（プロンプト）
@@ -169,12 +168,12 @@
     const apiKeyInput = document.getElementById("api-key-input");
     const personaSelect = document.getElementById("persona-select");
 
-    // 会話履歴の保持（文脈理解用）
+    // 会話履歴の保持
     let conversationHistory = [];
 
-    // APIキーのローカル保存・復元
+    // ★修正ポイント1：入力した瞬間に即時保存（inputイベントに変更）
     apiKeyInput.value = localStorage.getItem("gemini_api_key") || "";
-    apiKeyInput.addEventListener("change", () => {
+    apiKeyInput.addEventListener("input", () => {
       localStorage.setItem("gemini_api_key", apiKeyInput.value.trim());
     });
 
@@ -188,7 +187,7 @@
     }
 
     async function saveToGoogleDoc(sender, text) {
-      if (GAS_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) return;
+      if (!GAS_URL || GAS_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) return;
       try {
         await fetch(GAS_URL, {
           method: "POST",
@@ -203,6 +202,7 @@
 
     // Gemini API 呼び出し関数
     async function fetchGeminiResponse(userText) {
+      // 入力欄から直接最新の値を取得
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
         alert("Gemini APIキーを入力してください。");
@@ -212,7 +212,7 @@
       const selectedPersona = personaSelect.value;
       const systemInstruction = PERSONA_PROMPTS[selectedPersona];
 
-      // 対話履歴の作成
+      // 会話履歴の更新
       conversationHistory.push({ role: "user", parts: [{ text: userText }] });
 
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
@@ -234,19 +234,20 @@
         const data = await response.json();
         
         if (data.error) {
-          console.error("API Error:", data.error);
-          return "（エラー: APIキーまたはリクエストを確認してください）";
+          console.error("Gemini API Error Detail:", data.error);
+          // ★修正ポイント2：何のエラーか分かりやすいように詳細を表示
+          return `（エラー: ${data.error.message || "APIキーを確認してください"}）`;
         }
 
         const aiText = data.candidates[0].content.parts[0].text;
         
-        // AIの返答を会話履歴に追加
+        // AIの返答を履歴に追加
         conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
         
         return aiText;
       } catch (err) {
         console.error("通信エラー:", err);
-        return "（エラーが発生しました）";
+        return "（通信エラーが発生しました）";
       }
     }
 
@@ -281,5 +282,6 @@
       }
     });
   </script>
+ 
 </body>
 </html>

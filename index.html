@@ -255,7 +255,6 @@
   </footer>
 
   <script>
-    // ★GASのURL設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
 
     const PERSONA_CONFIG = {
@@ -376,7 +375,7 @@
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // ★強化版：自動リトライ機能付き Gemini API 呼び出し
+    // ★混雑＆1分20回制限（Quota）スマート対応版 Gemini API 呼び出し
     async function fetchGeminiResponse(userText, statusBubble) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
@@ -395,8 +394,8 @@
         contents: currentHistory
       };
 
-      const maxRetries = 5; // リトライ回数を5回に増加
-      let delay = 2000;      // 初期待機時間を2秒に設定 (2s ➔ 4s ➔ 8s ➔ 16s)
+      const maxRetries = 5;
+      let delay = 2000;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -409,9 +408,21 @@
           const data = await response.json();
 
           if (data.error) {
-            const isHighDemand = data.error.message && data.error.message.includes("high demand");
-            
-            // 混雑エラーかつリトライ回数が残っている場合
+            const errorMsg = data.error.message || "";
+            const isHighDemand = errorMsg.includes("high demand");
+            const isQuotaExceeded = errorMsg.includes("Quota exceeded") || errorMsg.includes("limit: 20") || data.error.code === 429;
+
+            // ケース1: 1分間20回制限（Quota）にかかった場合 ➔ 20秒間スマート待機
+            if (isQuotaExceeded && attempt < maxRetries) {
+              if (statusBubble) {
+                statusBubble.innerText = `⌛ 無料枠制限(1分20回)のため20秒待機して再試行中... (${attempt}/${maxRetries}回目)`;
+              }
+              console.warn(`Quota制限検知。20秒間待機します (${attempt}/${maxRetries})...`);
+              await sleep(20000); // 確実に解除されるよう20秒待機
+              continue;
+            }
+
+            // ケース2: サーバー混雑（High Demand）の場合 ➔ 段階的リトライ (2s ➔ 4s ➔ 8s...)
             if (isHighDemand && attempt < maxRetries) {
               if (statusBubble) {
                 statusBubble.innerText = `⏳ 回線混雑のため自動再接続中... (${attempt}/${maxRetries}回目)`;
@@ -462,7 +473,7 @@
       // 一時的な「応答待ち/再試行中」バブルを表示
       const statusBubble = appendMessage("AI", "💭 考え中...");
 
-      // API呼び出し（リトライ処理付き）
+      // API呼び出し（スマートリトライ処理付き）
       const aiResponse = await fetchGeminiResponse(text, statusBubble);
 
       if (aiResponse) {

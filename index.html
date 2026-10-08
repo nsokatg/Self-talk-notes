@@ -76,6 +76,11 @@
       align-self: flex-start;
     }
 
+    .message-group.system {
+      align-self: center;
+      max-width: 100%;
+    }
+
     /* アイコン */
     .avatar {
       width: 36px;
@@ -133,6 +138,15 @@
       background-color: #ffffff;
       color: #000;
       border-bottom-left-radius: 2px;
+    }
+
+    .system-bubble {
+      background-color: rgba(0, 0, 0, 0.2);
+      color: #ffffff;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 12px;
+      text-align: center;
     }
 
     /* 送信時刻・既読表示 */
@@ -256,6 +270,7 @@
 
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwF6AXUo4P5MFZIUibrQhXtEzSjKyLnkZCicRK1fdPf3PDf6TUHnMvVtlU-ZA9vLebh/exec";
+    const MAX_TURNS_BEFORE_SUMMARY = 30; // 30往復で自動要約
 
     const PERSONA_CONFIG = {
       coach: {
@@ -315,7 +330,17 @@
       const timeStr = getCurrentTime();
 
       const groupDiv = document.createElement("div");
-      groupDiv.classList.add("message-group", sender === "ユーザー" ? "user" : "ai");
+      groupDiv.classList.add("message-group", sender === "ユーザー" ? "user" : sender === "システム" ? "system" : "ai");
+
+      if (sender === "システム") {
+        const bubbleDiv = document.createElement("div");
+        bubbleDiv.classList.add("system-bubble");
+        bubbleDiv.innerText = text;
+        groupDiv.appendChild(bubbleDiv);
+        chatContainer.appendChild(groupDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return bubbleDiv;
+      }
 
       if (sender !== "ユーザー") {
         const avatarDiv = document.createElement("div");
@@ -375,7 +400,58 @@
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // ★混雑＆1分20回制限（Quota）スマート対応版 Gemini API 呼び出し
+    // ★自動要約チェック＆処理関数
+    async function summarizeHistoryIfNeeded() {
+      // ユーザーとモデルのペア（往復）数をカウント（1往復 = user + model の2要素）
+      const turnCount = conversationHistory.filter(h => h.role === "user").length;
+
+      if (turnCount >= MAX_TURNS_BEFORE_SUMMARY) {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) return;
+
+        appendMessage("システム", "📝 30往復に達したため、これまでの会話内容を自動要約して整理中...");
+
+        // 要約用プロンプトの構築
+        const summaryEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        
+        const summaryRequestBody = {
+          system_instruction: { 
+            parts: [{ text: "あなたは優秀な編集者です。これまでの自己対話の履歴から、ユーザーの悩み・気づき・決定事項・これまでの経緯を簡潔に要約してください。" }] 
+          },
+          contents: [
+            ...conversationHistory,
+            { role: "user", parts: [{ text: "これまでの対話の経緯や重要なポイントを、今後の引き継ぎ用に箇条書きベースで簡潔に要約してください。" }] }
+          ]
+        };
+
+        try {
+          const res = await fetch(summaryEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(summaryRequestBody)
+          });
+          const data = await res.json();
+
+          if (data.candidates && data.candidates[0]) {
+            const summaryText = data.candidates[0].content.parts[0].text;
+            
+            // 履歴を「要約結果」＋「直近の数往復（例: 直近2往復分）」にスリム化
+            const recentHistory = conversationHistory.slice(-4); 
+            conversationHistory = [
+              { role: "user", parts: [{ text: `【これまでの会話の引き継ぎ・要約】\n${summaryText}` }] },
+              { role: "model", parts: [{ text: "了解しました。これまでの文脈を踏まえて対話を続けます。" }] },
+              ...recentHistory
+            ];
+
+            appendMessage("システム", "✨ 自動要約が完了しました。対話を継続します。");
+          }
+        } catch (err) {
+          console.error("自動要約エラー:", err);
+        }
+      }
+    }
+
+    // Gemini API 呼び出し
     async function fetchGeminiResponse(userText, statusBubble) {
       const apiKey = apiKeyInput.value.trim();
       if (!apiKey) {
@@ -383,11 +459,14 @@
         return null;
       }
 
+      // 送信する前に要約の必要性をチェック
+      await summarizeHistoryIfNeeded();
+
       const selectedPersona = personaSelect.value;
       const systemInstruction = PERSONA_CONFIG[selectedPersona].prompt;
 
       const currentHistory = [...conversationHistory, { role: "user", parts: [{ text: userText }] }];
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
       const requestBody = {
         system_instruction: { parts: [{ text: systemInstruction }] },
@@ -412,22 +491,18 @@
             const isHighDemand = errorMsg.includes("high demand");
             const isQuotaExceeded = errorMsg.includes("Quota exceeded") || errorMsg.includes("limit: 20") || data.error.code === 429;
 
-            // ケース1: 1分間20回制限（Quota）にかかった場合 ➔ 20秒間スマート待機
             if (isQuotaExceeded && attempt < maxRetries) {
               if (statusBubble) {
                 statusBubble.innerText = `⌛ 無料枠制限(1分20回)のため20秒待機して再試行中... (${attempt}/${maxRetries}回目)`;
               }
-              console.warn(`Quota制限検知。20秒間待機します (${attempt}/${maxRetries})...`);
-              await sleep(20000); // 確実に解除されるよう20秒待機
+              await sleep(20000);
               continue;
             }
 
-            // ケース2: サーバー混雑（High Demand）の場合 ➔ 段階的リトライ (2s ➔ 4s ➔ 8s...)
             if (isHighDemand && attempt < maxRetries) {
               if (statusBubble) {
                 statusBubble.innerText = `⏳ 回線混雑のため自動再接続中... (${attempt}/${maxRetries}回目)`;
               }
-              console.warn(`混雑エラー検知。${delay / 1000}秒後にリトライします (${attempt}/${maxRetries})...`);
               await sleep(delay);
               delay *= 2; 
               continue;
@@ -473,11 +548,11 @@
       // 一時的な「応答待ち/再試行中」バブルを表示
       const statusBubble = appendMessage("AI", "💭 考え中...");
 
-      // API呼び出し（スマートリトライ処理付き）
+      // API呼び出し
       const aiResponse = await fetchGeminiResponse(text, statusBubble);
 
       if (aiResponse) {
-        statusBubble.innerText = aiResponse; // 返答で吹き出しの中身を更新
+        statusBubble.innerText = aiResponse;
         saveToGoogleDoc("AI", aiResponse);
       } else {
         statusBubble.innerText = "（エラーが発生しました）";

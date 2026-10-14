@@ -330,7 +330,7 @@
       localStorage.setItem("gemini_api_key", apiKeyInput.value.trim());
     });
 
-    const savedModel = localStorage.getItem("gemini_selected_model") || "gemini-2.5-flash";
+    const savedModel = localStorage.getItem("gemini_selected_model") || "gemini-3.5-flash";
     const savedCustomModel = localStorage.getItem("gemini_custom_model") || "";
 
     if (modelSelect.querySelector(`option[value="${savedModel}"]`)) {
@@ -363,7 +363,7 @@
     // 実際に使用するモデル名を取得するヘルパー関数
     function getActiveModelName() {
       if (modelSelect.value === "custom") {
-        return customModelInput.value.trim() || "gemini-2.5-flash"; // 未入力時のフォールバック
+        return customModelInput.value.trim() || "gemini-3.5-flash"; // 未入力時のフォールバック
       }
       return modelSelect.value;
     }

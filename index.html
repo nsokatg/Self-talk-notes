@@ -8,7 +8,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #7494C0;
+      background-color: #ffffff;
+      color: #333333;
       height: 100vh;
       display: flex;
       flex-direction: column;
@@ -16,14 +17,14 @@
 
     /* ヘッダー */
     header {
-      background-color: #273246;
-      color: #ffffff;
-      padding: 10px 16px;
+      background-color: #f8f9fa;
+      color: #212529;
+      padding: 12px 16px;
       font-size: 14px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      border-bottom: 1px solid #e9ecef;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     .config-row {
@@ -34,36 +35,49 @@
     }
 
     header input, header select, header button {
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #ced4da;
       font-size: 12px;
       outline: none;
+      background-color: #ffffff;
+      color: #333333;
+    }
+
+    header select:focus, header input:focus {
+      border-color: #86b7fe;
     }
 
     header input[type="password"], header input[type="text"] { flex: 1; }
 
     .reset-btn {
-      background-color: #e74c3c;
+      background-color: #dc3545;
       color: white;
+      border: none;
       cursor: pointer;
-      font-weight: bold;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .reset-btn:hover {
+      opacity: 0.9;
     }
 
     /* チャット表示エリア */
     #chat-container {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
+      background-color: #ffffff;
     }
 
     /* メッセージグループ（送信者＋吹き出し＋時刻） */
     .message-group {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       max-width: 85%;
     }
 
@@ -83,143 +97,146 @@
 
     /* アイコン */
     .avatar {
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      background-color: #ffffff;
+      background-color: #f1f3f5;
+      border: 1px solid #e9ecef;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 16px;
       flex-shrink: 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     .message-content {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .sender-name {
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.9);
+      color: #6c757d;
       margin-left: 2px;
+      font-weight: 500;
     }
 
     .bubble-wrapper {
       display: flex;
-      align-items: flex-end;
+      flex-direction: column;
       gap: 4px;
     }
 
     .user .bubble-wrapper {
-      flex-direction: row-reverse;
+      align-items: flex-end;
     }
 
-    /* 吹き出しスタイル */
+    .ai .bubble-wrapper {
+      align-items: flex-start;
+    }
+
+    /* メッセージカードスタイル */
     .bubble {
-      padding: 10px 14px;
-      border-radius: 16px;
+      padding: 12px 16px;
+      border-radius: 14px;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
       word-wrap: break-word;
       white-space: pre-wrap;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
+    /* 添付画像に基づく配色設定 */
     .user .bubble {
-      background-color: #85E249;
-      color: #000;
-      border-bottom-right-radius: 2px;
+      background-color: #e8ecf8; /* 薄いラベンダーブルー */
+      color: #1a1a1a;
+      border-top-right-radius: 4px;
     }
 
     .ai .bubble {
-      background-color: #ffffff;
-      color: #000;
-      border-bottom-left-radius: 2px;
+      background-color: #f2f2f2; /* ごく薄いグレー */
+      color: #1a1a1a;
+      border-top-left-radius: 4px;
     }
 
     .system-bubble {
-      background-color: rgba(0, 0, 0, 0.2);
-      color: #ffffff;
+      background-color: #f8f9fa;
+      color: #6c757d;
+      border: 1px solid #e9ecef;
       font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 12px;
+      padding: 6px 14px;
+      border-radius: 20px;
       text-align: center;
     }
 
-    /* 送信時刻・既読表示 */
+    /* 送信時刻・ステータス表示 */
     .time-status {
       font-size: 10px;
-      color: rgba(255, 255, 255, 0.8);
+      color: #8e8e93;
       white-space: nowrap;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      line-height: 1.2;
-    }
-
-    .user .time-status {
-      align-items: flex-end;
-    }
-
-    .read-mark {
-      font-size: 9px;
-      color: #e2fcd4;
+      line-height: 1;
+      margin: 0 2px;
     }
 
     /* クイック応答（スタンプ風）バー */
     .quick-bar {
-      background-color: #8faacb;
-      padding: 6px 10px;
+      background-color: #ffffff;
+      padding: 8px 16px;
       display: flex;
-      gap: 6px;
+      gap: 8px;
       overflow-x: auto;
       white-space: nowrap;
+      border-top: 1px solid #f1f3f5;
     }
 
     .quick-btn {
-      background-color: rgba(255, 255, 255, 0.9);
-      border: none;
-      border-radius: 12px;
-      padding: 5px 12px;
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 18px;
+      padding: 6px 14px;
       font-size: 12px;
-      color: #273246;
+      color: #495057;
       cursor: pointer;
       font-weight: 500;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      transition: background-color 0.2s;
+      transition: all 0.2s ease;
     }
 
     .quick-btn:hover {
-      background-color: #ffffff;
+      background-color: #e9ecef;
+      color: #212529;
     }
 
     /* 下部固定入力エリア */
     footer {
       background-color: #ffffff;
-      padding: 10px;
+      padding: 12px 16px;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
-      border-top: 1px solid #ddd;
+      border-top: 1px solid #e9ecef;
     }
 
     footer textarea {
       flex: 1;
-      border: 1px solid #ccc;
+      border: 1px solid #ced4da;
       border-radius: 20px;
-      padding: 10px 14px;
+      padding: 10px 16px;
       font-size: 14px;
       resize: none;
-      height: 40px;
+      height: 42px;
       outline: none;
       font-family: inherit;
+      background-color: #ffffff;
+      color: #333333;
+      transition: border-color 0.2s;
+    }
+
+    footer textarea:focus {
+      border-color: #a5b4fc;
     }
 
     footer button {
-      background-color: #00B900;
+      background-color: #6366f1;
       color: white;
       border: none;
       border-radius: 50%;
@@ -230,9 +247,23 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background-color 0.2s, transform 0.1s;
+      flex-shrink: 0;
     }
 
-    footer button:disabled { background-color: #ccc; }
+    footer button:hover {
+      background-color: #4f46e5;
+    }
+
+    footer button:active {
+      transform: scale(0.95);
+    }
+
+    footer button:disabled {
+      background-color: #e9ecef;
+      color: #adb5bd;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -246,7 +277,7 @@
         <option value="devil">悪魔の代弁者（盲点を突く）</option>
         <option value="socrates">ソクラテス（質問のみ）</option>
         <!-- 新規追加の4人 -->
-        <option value="dialectic">統合イノベーター（弁証法・止揚）</option>
+        <option value="dialectic" selected>統合イノベーター（弁証法・止揚）</option>
         <option value="lateral">水平ひらめき屋（前提打破・ジャンプ）</option>
         <option value="abduction">仮説デザイナー（大胆な仮説形成）</option>
         <option value="rhizome">リゾーム探索者（縦横無尽に増殖）</option>
@@ -296,7 +327,7 @@
         icon: "🌱",
         prompt: `あなたはユーザーの「思考整理パートナー（共感型コーチ）」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・説教や長文のアドバイスは絶対禁止。
 ・ユーザーの気持ちを肯定的に受け止めた上で、思考を深める「問いかけ」を1つだけ投げかけること。`
       },
@@ -305,7 +336,7 @@
         icon: "😈",
         prompt: `あなたは「悪魔の代弁者（クリティカルシンカー）」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・ユーザーのアイデアや意見の「盲点」や「リスク」を優しく指摘すること。
 ・否定するのではなく "もし〜という事態が起きたらどう対応する？" といった視点を提供すること。`
       },
@@ -325,7 +356,7 @@
         icon: "⚖️",
         prompt: `あなたは「ヘーゲル的弁証法を実践する思考パートナー（止揚・アウフヘーベン）」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・対立する2つの意見やトレードオフ（AかBか）の悩みに対して、どちらかを否定するのではなく両者の強みを残した「第3のアイデア（C案）」を提案すること。
 ・「AとBを両立させるために、こんな次元で統合してみたらどうでしょうか？」とアイデアを一段上へ引き上げる問いを投げかけること。`
       },
@@ -334,7 +365,7 @@
         icon: "💡",
         prompt: `あなたは「ラテラルシンキング（水平思考）のパートナー」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・前提や常識（「そもそもなぜそれが必要なのか？」）を崩し、まったく関係のない異分野の概念や「もし〜だったら？」という仮定を掛け合わせること。
 ・「もし〇〇が完全に存在しない世界だったら？」「一見関係ない△△と組み合わせたらどうなる？」など、思考のジャンプ・跳躍を促す問いを出すこと。`
       },
@@ -343,7 +374,7 @@
         icon: "🧩",
         prompt: `あなたは「アブダクション（仮説形成）のパートナー」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・ユーザーの小さな違和感や直感（奇妙な事実）に着目し、「もし〇〇という仮説（未来の前提）が正しいとすれば、今の事象はすべて説明がつくのでは？」と逆算的なアイデアを創出すること。
 ・データや論理の積み上げではなく、「もし未来が〇〇だとしたら？」という大胆な仮説を一緒に組み立てる問いを投げること。`
       },
@@ -352,7 +383,7 @@
         icon: "🌿",
         prompt: `あなたは「ドゥルーズ的リゾーム思考（縦横無尽の生成論）のパートナー」です。
 ルール：
-・LINEのように短文（100〜150文字程度）で返答すること。
+・短文（100〜150文字程度）で返答すること。
 ・1つの結論や本質に絞り込むのではなく、雑草の地下茎のように話題・アイデアを縦横無尽に四方八方へと広げること。
 ・「それって実は〇〇という分野とも繋がっているし、△△とも言えますね！さらに言えば…」と予想外の連結を提示し、思考のネットワークを増殖させる問いを投げること。`
       }
@@ -415,9 +446,11 @@
 
     function getCurrentTime() {
       const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      return `${hours}:${minutes}`;
+      return `${month}/${date} ${hours}:${minutes}`;
     }
 
     function appendMessage(sender, text) {
@@ -464,11 +497,7 @@
 
       const timeDiv = document.createElement("div");
       timeDiv.classList.add("time-status");
-      if (sender === "ユーザー") {
-        timeDiv.innerHTML = `<span class="read-mark">既読</span><span>${timeStr}</span>`;
-      } else {
-        timeDiv.innerHTML = `<span>${timeStr}</span>`;
-      }
+      timeDiv.innerText = timeStr; // 既読表記を取り払いシンプルに日付＋時刻を表示
 
       wrapperDiv.appendChild(bubbleDiv);
       wrapperDiv.appendChild(timeDiv);
